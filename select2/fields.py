@@ -176,7 +176,7 @@ class ModelMultipleChoiceField(Select2ModelFieldMixin, forms.ModelMultipleChoice
         qs = self.queryset.filter(**{
             ('%s__in' % key): value,
         })
-        pks = set([force_test(getattr(o, key)) for o in qs])
+        pks = set([force_text(getattr(o, key)) for o in qs])
 
         # Create a dictionary for storing the original order of the items
         # passed from the form
