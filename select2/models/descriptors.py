@@ -2,6 +2,11 @@ import django
 from django.db import router
 from django.db.models import signals
 
+try:
+    from django.db.models.fields.related import ReverseManyRelatedObjectsDescriptor as ReverseManyToOneDescriptor
+except ImportError:
+    from django.db.models.fields.related import ReverseManyToOneDescriptor
+
 from ..utils import cached_property
 
 try:
@@ -10,7 +15,7 @@ except ImportError:
     from django.db.models.fields.related import ReverseManyRelatedObjectsDescriptor as ReverseDescriptor
 
 
-class SortableReverseManyRelatedObjectsDescriptor(ReverseDescriptor):
+class SortableReverseManyRelatedObjectsDescriptor(ReverseManyToOneDescriptor):
 
     @cached_property
     def related_manager_cls(self):

@@ -5,6 +5,7 @@ from django import forms
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
+from django.utils.functional import Promise
 from django.db.models.fields.related import add_lazy_relation
 from django.forms.models import ModelChoiceIterator
 
@@ -28,6 +29,12 @@ class Select2FieldMixin(object):
 
     def __init__(self, *args, **kwargs):
         widget_kwargs = {}
+        # The child field class can pass widget_kwargs as a dict. We use this
+        # in MultipleChoiceField to ensure that the field's choices get passed
+        # along to the widget. This is unnecessary for model fields since the
+        # choices in that case are iterators wrapping the queryset.
+        if 'widget_kwargs' in kwargs:
+            widget_kwargs.update(kwargs.pop('widget_kwargs'))
         widget_kwarg_keys = ['overlay', 'js_options', 'sortable', 'ajax']
         for k in widget_kwarg_keys:
             if k in kwargs:
@@ -47,6 +54,23 @@ class Select2FieldMixin(object):
         if not hasattr(self.widget, 'is_required'):
             self.widget.is_required = self.required
 
+    @property
+    def choices(self):
+        """
+        When it's time to get the choices, if it was a lazy then figure it out
+        now and memoize the result.
+        """
+        if isinstance(self._choices, Promise):
+            self._choices = list(self._choices)
+        return self._choices
+
+    @choices.setter
+    def choices(self, value):
+        self._set_choices(value)
+
+    def _set_choices(self, value):
+        self._choices = value
+
 
 class ChoiceField(Select2FieldMixin, forms.ChoiceField):
 
@@ -56,6 +80,15 @@ class ChoiceField(Select2FieldMixin, forms.ChoiceField):
 class MultipleChoiceField(Select2FieldMixin, forms.MultipleChoiceField):
 
     widget = SelectMultiple
+
+    def __init__(self, *args, **kwargs):
+        # Explicitly pass the choices kwarg to the widget. "widget_kwargs"
+        # is not a standard Django Form Field kwarg, but we pop it off in
+        # Select2FieldMixin.__init__
+        kwargs['widget_kwargs'] = kwargs.get('widget_kwargs') or {}
+        if 'choices' in kwargs:
+            kwargs['widget_kwargs']['choices'] = kwargs['choices']
+        super(MultipleChoiceField, self).__init__(*args, **kwargs)
 
     def has_changed(self, initial, data):
         widget = self.widget

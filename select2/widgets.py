@@ -16,6 +16,15 @@ try:
 except ImportError:
     from django.forms.util import flatatt
 
+from django.utils.datastructures import MultiValueDict
+try:
+    from django.utils.datastructures import MergeDict
+except ImportError:
+    MergeDict = type('MergeDict', (object, ), {})
+
+from django.utils.html import escape, conditional_escape
+from django.utils.safestring import mark_safe
+
 try:
     from django.utils.encoding import force_unicode as force_text
 except (NameError, ImportError):
@@ -156,7 +165,7 @@ class Select(widgets.Input):
         return mark_safe('\n'.join(output))
 
     def render_option(self, selected_choices, option_value, option_label):
-        option_value = force_test(option_value)
+        option_value = force_text(option_value)
         if option_value in selected_choices:
             selected_html = ' selected="selected"'
             if not self.allow_multiple_selected:
@@ -170,7 +179,7 @@ class Select(widgets.Input):
 
     def render_options(self, choices, selected_choices):
         # Normalize to strings.
-        selected_choices = set(force_test(v) for v in selected_choices)
+        selected_choices = set(force_text(v) for v in selected_choices)
         output = []
         for option_value, option_label in chain(self.choices, choices):
             if isinstance(option_label, (list, tuple)):
